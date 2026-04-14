@@ -1,9 +1,9 @@
 .iris-tracker-container {
   position: relative;
-  width: 60vw;
-  height: 100vh;
+  /* width: 60vw; */
+  height: 95vh;
   background: #e7e7e7;
-  margin: 20px auto;
+  margin: 2px auto;
   overflow: hidden;
   border-radius: 20px;
 }
@@ -238,6 +238,9 @@ button{
   .info-content {
     width: 70%;
   }
+  .screenshot-content {
+    width: 95% !important;
+  }
 }
 
 .screenshot-modal {
@@ -256,27 +259,28 @@ button{
 .screenshot-content {
   background-color: #1e1e1ecc;
   padding: 1rem;
-  max-width: 600px;
-  width: 90%;
+  /* max-width: 600px; */
+  width: auto;
   border-radius: 8px;
   text-align: center;
-  max-height: 80vh;
+  height: auto;
   overflow-y: auto;
 }
 
 .screenshot-content img {
   max-width: 100%;
+  width: 100%;
   height: auto;
-  max-height: 70vh;
+  max-height: 80vh;
   border-radius: 8px;
   display: block;
-  margin: 0 auto;
+  margin: 0px auto 0;
 }
 
 .screenshot-buttons {
   display: flex;
   gap: 1rem;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
   justify-content: center;
 }
 

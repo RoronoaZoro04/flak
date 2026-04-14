@@ -26,7 +26,6 @@ function IrisTracker() {
   const [showScreenshotModal, setShowScreenshotModal] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [videoReady, setVideoReady] = useState(false); // NEW: state for video readiness
   const [firstFrameRendered, setFirstFrameRendered] = useState(false);
 
   const selectedIrisIdRef = useRef(selectedIrisId);
@@ -118,6 +117,7 @@ function IrisTracker() {
     });
 
     faceMesh.setOptions({
+      selfieMode: true, 
       maxNumFaces: 1,
       refineLandmarks: true,
       minDetectionConfidence: 0.5,
@@ -143,12 +143,15 @@ function IrisTracker() {
   };
 
   const startMediapipeCamera = () => {
-    if (!webcamRef.current || !webcamRef.current.video) {
-      console.warn("No webcam video found.");
-      return;
-    }
-
+    if (!webcamRef.current || !webcamRef.current.video) return;
+  
     try {
+      const videoWidth = 1920;
+      const videoHeight = 1080;
+  
+      webcamRef.current.video.width = videoWidth;
+      webcamRef.current.video.height = videoHeight;
+  
       const camera = new Camera(webcamRef.current.video, {
         onFrame: async () => {
           if (faceMeshRef.current) {
@@ -157,23 +160,26 @@ function IrisTracker() {
             });
           }
         },
-        width: 1280,
-        height: 720,
+        width: videoWidth,
+        height: videoHeight,
       });
+  
       camera.start().catch((err) => {
         console.error("Failed to start camera feed:", err);
-        setCameraError(
-          "Could not start camera. Please allow camera access or try a different device."
-        );
+        setCameraError("Could not start camera. Please allow access or try another device.");
       });
+  
+      if (canvasRef.current) {
+        canvasRef.current.width = videoWidth;
+        canvasRef.current.height = videoHeight;
+      }
     } catch (err) {
       console.error("Camera initialization error:", err);
-      setCameraError(
-        "Could not initialize camera. Please check your device permissions."
-      );
+      setCameraError("Could not initialize camera. Please check device permissions.");
     }
   };
-
+  
+  
   const onResults = (results) => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
@@ -290,7 +296,7 @@ function IrisTracker() {
     if (!canvasRef.current || !webcamRef.current || isCapturing) return;
 
     setIsCapturing(true);
-    setCountdown(4);
+    setCountdown(3);
 
     const capturePromise = new Promise((resolve) => {
       setTimeout(async () => {
@@ -322,25 +328,25 @@ function IrisTracker() {
     return new Promise((resolve) => {
       if (!canvasRef.current || !webcamRef.current || !latestSite?.logo || isCapturing)
         return;
-
+  
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
       const video = webcamRef.current.video;
-      const scaleFactor = 2;
-      canvas.width = video.videoWidth * scaleFactor;
-      canvas.height = video.videoHeight * scaleFactor;
-
+  
+      const scaleFactor = window.devicePixelRatio || 2; 
+      const videoWidth = video.videoWidth * scaleFactor;
+      const videoHeight = video.videoHeight * scaleFactor;
+  
+      canvas.width = videoWidth;
+      canvas.height = videoHeight;
+  
+      ctx.save()
       ctx.scale(-1, 1);
-      ctx.drawImage(
-        video,
-        -canvas.width / scaleFactor,
-        0,
-        canvas.width / scaleFactor,
-        canvas.height / scaleFactor
-      );
-      ctx.scale(-1, 1);
-
+      ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+      ctx.restore();
+  
       const logoImage = new Image();
+      logoImage.crossOrigin = "anonymous"; 
       axios
         .get(latestSite.logo, { responseType: "blob" })
         .then((response) => {
@@ -350,30 +356,44 @@ function IrisTracker() {
         .catch((error) => {
           console.error("Failed to fetch logo image:", error);
         });
-
+  
       logoImage.onload = () => {
-        const logoWidth = 300;
-        const logoHeight = (logoImage.height / logoImage.width) * logoWidth;
-        ctx.drawImage(logoImage, canvas.width / 2 - logoWidth / 2, 20, logoWidth, logoHeight);
-
-        canvas.toBlob((blob) => {
-          if (!blob) {
-            console.error("Failed to generate blob from canvas.");
+        const isMobile = window.innerWidth < 768;
+        const maxLogoWidth = videoWidth * (isMobile ? 0.40 : 0.40);
+        const maxLogoHeight = (logoImage.height / logoImage.width) * maxLogoWidth;
+  
+        const logoWidth = Math.min(maxLogoWidth);
+        const logoHeight = Math.min( maxLogoHeight);
+  
+        const logoX = (canvas.width - logoWidth) / 2;
+        const logoY = canvas.height * 0.02; 
+  
+        ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
+  
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              console.error("Failed to generate blob from canvas.");
+              resolve();
+              return;
+            }
+            const dataUrl = URL.createObjectURL(blob);
+            setScreenshot(dataUrl);
             resolve();
-            return;
-          }
-          const dataUrl = URL.createObjectURL(blob);
-          setScreenshot(dataUrl);
-          resolve();
-        }, "image/png");
+          },
+          "image/png",
+          1.0 
+        );
       };
-
+  
       logoImage.onerror = () => {
         console.error("Failed to load logo image.");
         resolve();
       };
     });
   };
+  
+  
 
   const handleShareScreenshot = () => {
     if (!screenshot) return;
@@ -427,7 +447,7 @@ function IrisTracker() {
     <div className="iris-tracker-container">
       <div className="header">
         <div className="d-flex">
-          <img src={latestSite ? latestSite.logo : ""} alt="logo" />
+          <img src={latestSite ? latestSite.logo : ""} alt="logo" style={{ objectFit: 'cover',  objectPosition: 'center', width: '100%'}} />
         </div>
         <button className="info-button" onClick={() => setShowInfo(true)}>
           <HelpCircle size={24} />
@@ -463,11 +483,16 @@ function IrisTracker() {
       <Webcam
         ref={webcamRef}
         audio={false}
+        videoConstraints={{
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          facingMode: "user",
+        }}
         onUserMedia={handleUserMedia}
         onUserMediaError={handleUserMediaError}
-        videoConstraints={{ facingMode: "user" }}
         style={{ visibility: "hidden", transform: "scaleX(-1)" }}
       />
+
 
         <canvas ref={canvasRef} className="video-canvas" />
 
@@ -581,6 +606,7 @@ function IrisTracker() {
             alt="SaglamGoz iris"
             onLoad={(e) => e.target.classList.add("loaded")}
             crossOrigin="anonymous"
+            
           />
           <div className="screenshot-buttons">
             <button onClick={() => setShowScreenshotModal(false)}>
