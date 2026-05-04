@@ -178,11 +178,35 @@
 
 .info-content {
   color:#f6f6f6;
-  background: #262626;  
+  background: #262626;
   padding: 2rem;
   border-radius: 1rem;
   max-width: 500px;
   width: 90%;
+}
+
+.info-lang-switcher {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.info-lang-button {
+  background: transparent;
+  color: #f6f6f6;
+  border: 1px solid #f6f6f6;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin: 0;
+  width: auto;
+}
+
+.info-lang-button.active {
+  background: #f6f6f6;
+  color: #262626;
 }
 button{
   color:#262626;
@@ -191,6 +215,11 @@ button{
   padding: 5px 10px;
   margin: auto;
   width: auto;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
 }
 .error-message {
   position: absolute;

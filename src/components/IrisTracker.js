@@ -2,11 +2,12 @@ import React, { useRef, useEffect, useState } from "react";
 import Webcam from "react-webcam";
 import { FaceMesh } from "@mediapipe/face_mesh";
 import { Camera } from "@mediapipe/camera_utils";
-import { Camera as CameraIcon, DownloadCloud, HelpCircle, X } from "lucide-react";
+import { Camera as CameraIcon, DownloadCloud, HelpCircle, Share2, X } from "lucide-react";
 import axios from "axios";
 
 function IrisTracker() {
   const base_url = "https://saglamgoz.az/";
+  // const base_url = "http://127.0.0.1:8000/";
 
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
@@ -16,8 +17,10 @@ function IrisTracker() {
   const [allImagesLoaded, setAllImagesLoaded] = useState(false);
   const [selectedIrisId, setSelectedIrisId] = useState("iris1");
   const [globalAlpha, setGlobalAlpha] = useState(0.4);
+  
   const [isIrisOnCanvas, setIsIrisOnCanvas] = useState(false);
-  const [showInfo, setShowInfo] = useState(false);
+  const [showInfo, setShowInfo] = useState(true);
+  const [infoLang, setInfoLang] = useState("EN");
   const [isCameraLoading, setIsCameraLoading] = useState(true);
   const [cameraError, setCameraError] = useState("");
   const [availableIris, setAvailableIris] = useState([]);
@@ -89,6 +92,7 @@ function IrisTracker() {
     if (allImagesLoaded) {
       initializeFaceMesh();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allImagesLoaded]);
 
   const preloadIrisImages = async (formattedData) => {
@@ -284,28 +288,13 @@ function IrisTracker() {
     ctx.restore();
   };
 
-  useEffect(() => {
-    if (canvasRef.current && webcamRef.current?.video) {
-      const video = webcamRef.current.video;
-      canvasRef.current.width = video.videoWidth;
-      canvasRef.current.height = video.videoHeight;
-    }
-  }, [webcamRef.current]);
-
   const handleCaptureScreenshot = async () => {
     if (!canvasRef.current || !webcamRef.current || isCapturing) return;
 
     setIsCapturing(true);
     setCountdown(3);
 
-    const capturePromise = new Promise((resolve) => {
-      setTimeout(async () => {
-        await captureScreenshot();
-        resolve();
-      }, 500);
-    });
-
-    const countdownPromise = new Promise((resolve) => {
+    await new Promise((resolve) => {
       const countdownInterval = setInterval(() => {
         setCountdown((prev) => {
           if (prev === 1) {
@@ -318,7 +307,7 @@ function IrisTracker() {
       }, 1000);
     });
 
-    await Promise.all([capturePromise, countdownPromise]);
+    await captureScreenshot();
 
     setShowScreenshotModal(true);
     setIsCapturing(false);
@@ -395,29 +384,34 @@ function IrisTracker() {
   
   
 
-  const handleShareScreenshot = () => {
+  const handleShareScreenshot = async () => {
     if (!screenshot) return;
 
-    if (navigator.share) {
-      fetch(screenshot)
-        .then((res) => res.blob())
-        .then((blob) => {
-          const file = new File([blob], "saglamgoz.png", { type: "image/png" });
-          navigator.share({
-            title: "SaglamGoz Image",
-            text: "Check out this image from SaglamGoz!",
-            files: [file],
-          })
-            .then(() => console.log("Screenshot shared successfully"))
-            .catch((error) => console.error("Error sharing screenshot:", error));
-        })
-        .catch((error) => console.error("Error creating shareable file:", error));
-    } else {
-      const link = document.createElement("a");
-      link.href = screenshot;
-      link.download = "saglamgoz.png";
-      link.click();
+    if (!navigator.share) {
+      handleDownloadScreenshot();
+      return;
     }
+
+    try {
+      const res = await fetch(screenshot);
+      const blob = await res.blob();
+      const file = new File([blob], "saglamgoz.png", { type: "image/png" });
+      await navigator.share({
+        title: "SaglamGoz Image",
+        text: "Check out this image from SaglamGoz!",
+        files: [file],
+      });
+    } catch (error) {
+      console.error("Error sharing screenshot:", error);
+    }
+  };
+
+  const handleDownloadScreenshot = () => {
+    if (!screenshot) return;
+    const link = document.createElement("a");
+    link.href = screenshot;
+    link.download = "saglamgoz.png";
+    link.click();
   };
 
   const [isDropdownOpen, setIsDropdownOpen] = useState({
@@ -441,7 +435,46 @@ function IrisTracker() {
     setGlobalAlpha(value);
     setIsDropdownOpen((prev) => ({ ...prev, density: false }));
   };
-    
+
+  const infoTranslations = {
+    EN: {
+      title: "Welcome to SağlamGöz Eyes simulator!",
+      intro:
+        "This simulator gives you a real-time overview of how your eyes could look with SağlamGöz colors.",
+      howTo: "How to use it?",
+      tips: [
+        "💡 Ensure you're in a bright environment (sunlight gives the best results)",
+        "🤳 Stay ~40cm away from your camera",
+        "📸 Keep steady, take a picture and try out all our colors!",
+      ],
+      ok: "Ok",
+    },
+    AZ: {
+      title: "Sağlamgöz flaak simulyatoruna xoş gəlmisiniz!",
+      intro:
+        "Bu simulyator, Sağlamgözün göz rəngləri ilə gözlərinizin necə görünə biləcəyinə dair real vaxt rejimində təsvir yaradır.",
+      howTo: "Necə istifadə etməli?",
+      tips: [
+        "💡 Parlaq bir mühitdə olduğunuzdan əmin olun (günəş işığı yaxşı nəticələr verir)",
+        "🤳 Kameranızdan ~40 sm məsafədə qalın",
+        "📸 Sabit qalın, şəkil çəkin və bütün rənglərimizi sınayın!",
+      ],
+      ok: "Tamam",
+    },
+    RU: {
+      title: "Добро пожаловать в симулятор глаз SağlamGöz!",
+      intro:
+        "Этот симулятор в режиме реального времени покажет вам, как могут выглядеть ваши глаза с цветами SağlamGöz.",
+      howTo: "Как им пользоваться?",
+      tips: [
+        "💡 Убедитесь, что вы находитесь в светлом помещении (лучшие результаты достигаются при солнечном свете)",
+        "🤳 Держитесь на расстоянии ~40 см от камеры",
+        "📸 Сохраняйте неподвижность, сделайте снимок и попробуйте все наши цвета!",
+      ],
+      ok: "Ок",
+    },
+  };
+
 
   return (
     <div className="iris-tracker-container">
@@ -579,21 +612,31 @@ function IrisTracker() {
       {showInfo && (
         <div className="info-modal">
           <div className="info-content">
-            <h2>Welcome to SağlamGöz Eyes simulator!</h2>
-            <p>
-              This simulator gives you a real-time overview of how your eyes could
-              look with SağlamGöz colors.
-            </p>
+            <div className="info-lang-switcher">
+              {["EN", "AZ", "RU"].map((lang) => (
+                <button
+                  key={lang}
+                  className={`info-lang-button ${infoLang === lang ? "active" : ""}`}
+                  onClick={() => setInfoLang(lang)}
+                >
+                  {lang}
+                </button>
+              ))}
+            </div>
+            <h2>{infoTranslations[infoLang].title}</h2>
+            <p>{infoTranslations[infoLang].intro}</p>
             <br />
             <p>
-              <strong>How to use it?</strong>
+              <strong>{infoTranslations[infoLang].howTo}</strong>
             </p>
             <ul>
-              <li>💡 Ensure you're in a bright environment (sunlight gives the best results)</li>
-              <li>🤳 Stay ~40cm away from your camera</li>
-              <li>📸 Keep steady, take a picture and try out all our colors!</li>
+              {infoTranslations[infoLang].tips.map((tip, i) => (
+                <li key={i}>{tip}</li>
+              ))}
             </ul>
-            <button onClick={() => setShowInfo(false)}>Ok</button>
+            <button onClick={() => setShowInfo(false)}>
+              {infoTranslations[infoLang].ok}
+            </button>
           </div>
         </div>
       )}
@@ -613,6 +656,9 @@ function IrisTracker() {
               <X />
             </button>
             <button onClick={handleShareScreenshot}>
+              <Share2 />
+            </button>
+            <button onClick={handleDownloadScreenshot}>
               <DownloadCloud />
             </button>
           </div>
