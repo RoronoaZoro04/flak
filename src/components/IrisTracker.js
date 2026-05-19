@@ -12,6 +12,7 @@ function IrisTracker() {
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
   const faceMeshRef = useRef(null);
+  const headerLogoRef = useRef(null);
 
   const [irisImages, setIrisImages] = useState({});
   const [allImagesLoaded, setAllImagesLoaded] = useState(false);
@@ -347,16 +348,22 @@ function IrisTracker() {
         });
   
       logoImage.onload = () => {
-        const isMobile = window.innerWidth < 768;
-        const maxLogoWidth = videoWidth * (isMobile ? 0.40 : 0.40);
-        const maxLogoHeight = (logoImage.height / logoImage.width) * maxLogoWidth;
-  
-        const logoWidth = Math.min(maxLogoWidth);
-        const logoHeight = Math.min( maxLogoHeight);
-  
+        const headerLogoEl = headerLogoRef.current;
+        const displayedVideoWidth = video.clientWidth;
+
+        let logoWidth;
+        if (headerLogoEl && displayedVideoWidth) {
+          const ratio = headerLogoEl.clientWidth / displayedVideoWidth;
+          logoWidth = canvas.width * ratio;
+        } else {
+          const isMobile = window.innerWidth < 768;
+          logoWidth = videoWidth * (isMobile ? 0.22 : 0.13);
+        }
+        const logoHeight = (logoImage.height / logoImage.width) * logoWidth;
+
         const logoX = (canvas.width - logoWidth) / 2;
-        const logoY = canvas.height * 0.02; 
-  
+        const logoY = canvas.height * 0.02;
+
         ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
   
         canvas.toBlob(
@@ -479,8 +486,13 @@ function IrisTracker() {
   return (
     <div className="iris-tracker-container">
       <div className="header">
-        <div className="d-flex">
-          <img src={latestSite ? latestSite.logo : ""} alt="logo" style={{ objectFit: 'cover',  objectPosition: 'center', width: '100%'}} />
+        <div className="d-flex header-logo-wrapper">
+          <img
+            ref={headerLogoRef}
+            src={latestSite ? latestSite.logo : ""}
+            alt="logo"
+            className="header-logo"
+          />
         </div>
         <button className="info-button" onClick={() => setShowInfo(true)}>
           <HelpCircle size={24} />
