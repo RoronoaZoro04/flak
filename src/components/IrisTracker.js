@@ -349,11 +349,11 @@ function IrisTracker() {
   
       logoImage.onload = () => {
         const headerLogoEl = headerLogoRef.current;
-        const displayedVideoWidth = video.clientWidth;
+        const displayedWidth = canvas.clientWidth;
 
         let logoWidth;
-        if (headerLogoEl && displayedVideoWidth) {
-          const ratio = headerLogoEl.clientWidth / displayedVideoWidth;
+        if (headerLogoEl && displayedWidth) {
+          const ratio = headerLogoEl.clientWidth / displayedWidth;
           logoWidth = canvas.width * ratio;
         } else {
           const isMobile = window.innerWidth < 768;
