@@ -318,25 +318,40 @@ function IrisTracker() {
     return new Promise((resolve) => {
       if (!canvasRef.current || !webcamRef.current || !latestSite?.logo || isCapturing)
         return;
-  
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-      const video = webcamRef.current.video;
-  
-      const scaleFactor = window.devicePixelRatio || 2; 
-      const videoWidth = video.videoWidth * scaleFactor;
-      const videoHeight = video.videoHeight * scaleFactor;
-  
-      canvas.width = videoWidth;
-      canvas.height = videoHeight;
-  
-      ctx.save()
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
-      ctx.restore();
-  
+
+      const liveCanvas = canvasRef.current;
+
+      const displayWidth = liveCanvas.clientWidth || liveCanvas.width;
+      const displayHeight = liveCanvas.clientHeight || liveCanvas.height;
+      const displayAspect = displayWidth / displayHeight;
+
+      const liveW = liveCanvas.width;
+      const liveH = liveCanvas.height;
+      const liveAspect = liveW / liveH;
+
+      let srcX = 0, srcY = 0, srcW = liveW, srcH = liveH;
+      if (liveAspect > displayAspect) {
+        srcW = liveH * displayAspect;
+        srcX = (liveW - srcW) / 2;
+      } else if (liveAspect < displayAspect) {
+        srcH = liveW / displayAspect;
+        srcY = (liveH - srcH) / 2;
+      }
+
+      const scaleFactor = window.devicePixelRatio || 2;
+      const outCanvas = document.createElement("canvas");
+      outCanvas.width = Math.round(displayWidth * scaleFactor);
+      outCanvas.height = Math.round(displayHeight * scaleFactor);
+      const outCtx = outCanvas.getContext("2d");
+
+      outCtx.drawImage(
+        liveCanvas,
+        srcX, srcY, srcW, srcH,
+        0, 0, outCanvas.width, outCanvas.height
+      );
+
       const logoImage = new Image();
-      logoImage.crossOrigin = "anonymous"; 
+      logoImage.crossOrigin = "anonymous";
       axios
         .get(latestSite.logo, { responseType: "blob" })
         .then((response) => {
@@ -346,27 +361,26 @@ function IrisTracker() {
         .catch((error) => {
           console.error("Failed to fetch logo image:", error);
         });
-  
+
       logoImage.onload = () => {
         const headerLogoEl = headerLogoRef.current;
-        const displayedWidth = canvas.clientWidth;
 
         let logoWidth;
-        if (headerLogoEl && displayedWidth) {
-          const ratio = headerLogoEl.clientWidth / displayedWidth;
-          logoWidth = canvas.width * ratio;
+        if (headerLogoEl && displayWidth) {
+          const ratio = headerLogoEl.clientWidth / displayWidth;
+          logoWidth = outCanvas.width * ratio;
         } else {
           const isMobile = window.innerWidth < 768;
-          logoWidth = videoWidth * (isMobile ? 0.22 : 0.13);
+          logoWidth = outCanvas.width * (isMobile ? 0.22 : 0.13);
         }
         const logoHeight = (logoImage.height / logoImage.width) * logoWidth;
 
-        const logoX = (canvas.width - logoWidth) / 2;
-        const logoY = canvas.height * 0.02;
+        const logoX = (outCanvas.width - logoWidth) / 2;
+        const logoY = outCanvas.height * 0.02;
 
-        ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
-  
-        canvas.toBlob(
+        outCtx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
+
+        outCanvas.toBlob(
           (blob) => {
             if (!blob) {
               console.error("Failed to generate blob from canvas.");
@@ -378,10 +392,10 @@ function IrisTracker() {
             resolve();
           },
           "image/png",
-          1.0 
+          1.0
         );
       };
-  
+
       logoImage.onerror = () => {
         console.error("Failed to load logo image.");
         resolve();
