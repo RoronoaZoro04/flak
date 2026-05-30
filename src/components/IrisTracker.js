@@ -321,34 +321,12 @@ function IrisTracker() {
 
       const liveCanvas = canvasRef.current;
 
-      const displayWidth = liveCanvas.clientWidth || liveCanvas.width;
-      const displayHeight = liveCanvas.clientHeight || liveCanvas.height;
-      const displayAspect = displayWidth / displayHeight;
-
-      const liveW = liveCanvas.width;
-      const liveH = liveCanvas.height;
-      const liveAspect = liveW / liveH;
-
-      let srcX = 0, srcY = 0, srcW = liveW, srcH = liveH;
-      if (liveAspect > displayAspect) {
-        srcW = liveH * displayAspect;
-        srcX = (liveW - srcW) / 2;
-      } else if (liveAspect < displayAspect) {
-        srcH = liveW / displayAspect;
-        srcY = (liveH - srcH) / 2;
-      }
-
-      const scaleFactor = window.devicePixelRatio || 2;
       const outCanvas = document.createElement("canvas");
-      outCanvas.width = Math.round(displayWidth * scaleFactor);
-      outCanvas.height = Math.round(displayHeight * scaleFactor);
+      outCanvas.width = liveCanvas.width;
+      outCanvas.height = liveCanvas.height;
       const outCtx = outCanvas.getContext("2d");
 
-      outCtx.drawImage(
-        liveCanvas,
-        srcX, srcY, srcW, srcH,
-        0, 0, outCanvas.width, outCanvas.height
-      );
+      outCtx.drawImage(liveCanvas, 0, 0);
 
       const logoImage = new Image();
       logoImage.crossOrigin = "anonymous";
@@ -364,10 +342,11 @@ function IrisTracker() {
 
       logoImage.onload = () => {
         const headerLogoEl = headerLogoRef.current;
+        const displayedWidth = liveCanvas.clientWidth;
 
         let logoWidth;
-        if (headerLogoEl && displayWidth) {
-          const ratio = headerLogoEl.clientWidth / displayWidth;
+        if (headerLogoEl && displayedWidth) {
+          const ratio = headerLogoEl.clientWidth / displayedWidth;
           logoWidth = outCanvas.width * ratio;
         } else {
           const isMobile = window.innerWidth < 768;
